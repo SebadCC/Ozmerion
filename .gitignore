@@ -1,4 +1,11 @@
-
-data/
+female_faces/
+male_faces/
+dataset/
+datos a/
+rafagas/
+Rdataset/
+Redataset/
+transmisiones/
+versiones/
 .vscode/
 __pycache__/
