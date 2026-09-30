@@ -1,11 +1,4 @@
-female_faces/
-male_faces/
-dataset/
-datos a/
-rafagas/
-Rdataset/
-Redataset/
-transmisiones/
-versiones/
-.vscode/
+Data/
 __pycache__/
+.vscode/
+.gemini/

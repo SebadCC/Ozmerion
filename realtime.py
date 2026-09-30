@@ -1,33 +1,31 @@
 # realtime.py
 import os
 import time
+import json
 import queue
 import threading
 from datetime import datetime
 import cv2
 import numpy as np
-from patch import GeometricPatchExtractor
 
 # ==============================================================================
-# CONFIGURACIÓN DE VERSIÓN Y RUTAS
+# CONFIGURACIÓN DE VERSIÓN Y CONTROL DE EXTRACTOR
 # ==============================================================================
-VERSION = 10
+VERSION = 11          # Versión del modelo ONNX a cargar (Data/models/vX/onnx/)
+PATCHER = 2           # 1: patch.py (MediaPipe Clásico) | 2: patch2.py (MediaPipe Tasks)
 
 ROOT_DATA = "Data"
-DIR_VERSION_ONNX = os.path.join(ROOT_DATA, "versiones", f"v{VERSION}", "onnx")
+DIR_VERSION_ONNX = os.path.join(ROOT_DATA, "models", f"v{VERSION}", "onnx")
 PERIOCULAR_MODEL_PATH = os.path.join(DIR_VERSION_ONNX, "model_periocular.onnx")
 BOCA_MODEL_PATH = os.path.join(DIR_VERSION_ONNX, "model_boca.onnx")
 
-DIR_TRANSMISIONES = os.path.join(ROOT_DATA, "transmisiones")
-DIR_CAPTURAS = os.path.join(DIR_TRANSMISIONES, "capturas")
-DIR_RAFAGAS = os.path.join(DIR_TRANSMISIONES, "rafagas")
+DIR_RAW_ARCHIVE = os.path.join(ROOT_DATA, "raw", "archive")
+DIR_DATASET_REAL = os.path.join(ROOT_DATA, "dataset", "real")
 
-DIR_RDATASET = os.path.join(ROOT_DATA, "Rdataset")
-
-# Intervalo para ráfaga (5 capturas por segundo -> 0.2s)
+# Intervalo para ráfaga continua (5 capturas por segundo -> 0.2s)
 BURST_INTERVAL_SECONDS = 0.2
 
-# Calibración de temperatura para softmax
+# Calibración de temperatura para suavizado de probabilidades
 SOFTMAX_TEMPERATURE = 3.5
 
 # Mapeos de clases
@@ -35,6 +33,12 @@ EYEBROW_LABELS = {0: "Descendida", 1: "Neutra", 2: "Elevada"}
 EYE_LABELS = {0: "Cerrado", 1: "Abierto"}
 COMMISSURE_LABELS = {0: "Abajo", 1: "Neutra", 2: "Arriba"}
 MOUTH_OPEN_LABELS = {0: "Cerrada", 1: "Abierta"}
+
+# Selección dinámica de extractor
+if PATCHER == 2:
+    from patch2 import TasksGeometricPatchExtractor as PatchExtractor
+else:
+    from patch import GeometricPatchExtractor as PatchExtractor
 
 
 def softmax(logits, temperature=SOFTMAX_TEMPERATURE):
@@ -44,7 +48,7 @@ def softmax(logits, temperature=SOFTMAX_TEMPERATURE):
 
 
 class DiskWriterWorker:
-    """Escritor asíncrono en segundo plano para evitar bloqueos del hilo de video."""
+    """Escritor asíncrono en segundo plano para evitar tirones en el hilo de captura."""
     def __init__(self):
         self.queue = queue.Queue()
         self.running = True
@@ -76,13 +80,13 @@ class RealtimeInferenceEngine:
     def __init__(self, periocular_model_path, mouth_model_path):
         if not os.path.exists(periocular_model_path) or not os.path.exists(mouth_model_path):
             raise FileNotFoundError(
-                f"[ERROR] No se encontraron los modelos de la versión v{VERSION} en:\n"
+                f"[ERROR] No se encontraron los modelos ONNX en:\n"
                 f"  - {periocular_model_path}\n"
                 f"  - {mouth_model_path}\n"
-                "Verifica que la carpeta exista o entrena primero con trainer.py."
+                "Verifica la ruta o entrena la versión primero con trainer.py."
             )
 
-        print(f"[INFO] Cargando modelos ONNX para versión: v{VERSION}...")
+        print(f"[INFO] Cargando modelos ONNX (Versión: v{VERSION}, Patcher: {PATCHER})...")
         self.net_periocular = cv2.dnn.readNetFromONNX(periocular_model_path)
         self.net_mouth = cv2.dnn.readNetFromONNX(mouth_model_path)
 
@@ -94,26 +98,44 @@ class RealtimeInferenceEngine:
         self.out_names_p = self.net_periocular.getUnconnectedOutLayersNames()
         self.out_names_m = self.net_mouth.getUnconnectedOutLayersNames()
 
-        self.extractor = GeometricPatchExtractor(target_size=(64, 64))
+        # Corrección: Parámetros requeridos por TasksGeometricPatchExtractor en patch2
+        self.extractor = PatchExtractor(
+            caller="realtime",
+            max_pitch=20.0,
+            max_yaw=20.0,
+            max_roll=15.0,
+            min_detection_confidence=0.5,
+            min_presence_confidence=0.5,
+            min_tracking_confidence=0.5,
+            padding_periocular=0.45,
+            padding_boca=0.45,
+            target_size=(64, 64)
+        )
         self.writer = DiskWriterWorker()
 
-        os.makedirs(DIR_CAPTURAS, exist_ok=True)
-        os.makedirs(DIR_RAFAGAS, exist_ok=True)
-        os.makedirs(DIR_RDATASET, exist_ok=True)
+        # Identificador de sesión para agrupar carpetas
+        self.session_timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+        self.dir_session_raw = os.path.join(DIR_RAW_ARCHIVE, self.session_timestamp)
+        self.dir_session_real = os.path.join(DIR_DATASET_REAL, self.session_timestamp)
 
-        self.current_minute_str = ""
-        self.minute_index = 0
-
-        self.single_capture_count = 0
-        self.burst_capture_count = 0
+        self.raw_single_count = 0
+        self.raw_burst_count = 0
+        self.real_triad_count = 0
         self.last_burst_time = 0.0
 
-        # Tags activos para grabación manual supervisada
+        # Tags activos para supervisión manual
         self.tags = {
             "ojo": None,        # 'abierto', 'cerrado'
             "ceja": None,       # 'neutra', 'arriba', 'abajo'
             "boca": None,       # 'abierta', 'cerrada'
             "comisuras": None   # 'neutra', 'arriba', 'abajo'
+        }
+
+        # Contador en memoria para auditoría de clases en dataset/real
+        self.real_distribution = {
+            "periocular_izq": {},
+            "periocular_der": {},
+            "boca": {}
         }
 
     def _infer_periocular(self, patch):
@@ -158,25 +180,21 @@ class RealtimeInferenceEngine:
             prob_ap[idx_ap]
         )
 
-    def _get_timestamp_and_index(self):
-        now = datetime.now()
-        minute_key = now.strftime("%d_%m_%y_%H_%M")
-        if minute_key == self.current_minute_str:
-            self.minute_index += 1
-        else:
-            self.current_minute_str = minute_key
-            self.minute_index = 1
-        return minute_key, self.minute_index
-
     def _has_complete_tags(self):
         return all(v is not None for v in self.tags.values())
 
-    def _save_data(self, raw_frame, patches, is_burst=False):
-        now = datetime.now()
+    def _record_distribution_count(self, region, folder):
+        if folder not in self.real_distribution[region]:
+            self.real_distribution[region][folder] = 0
+        self.real_distribution[region][folder] += 1
 
-        # CASO 1: Grabación manual hacia Rdataset (solo con parches extraídos)
+    def _save_data(self, raw_frame, patches, is_burst=False):
+        # ----------------------------------------------------------------------
+        # FLUJO 1: Supervisado manual -> Data/dataset/real/{sesion}/
+        # ----------------------------------------------------------------------
         if self._has_complete_tags() and patches is not None:
-            minute_key, idx = self._get_timestamp_and_index()
+            self.real_triad_count += 1
+            idx = self.real_triad_count
 
             ceja_folder_map = {"arriba": "elevada", "abajo": "descendida", "neutra": "neutra"}
             comisuras_folder_map = {"arriba": "arriba", "abajo": "abajo", "neutra": "neutra"}
@@ -191,38 +209,64 @@ class RealtimeInferenceEngine:
 
             # 1. Periocular Izquierdo
             path_izq = os.path.join(
-                DIR_RDATASET, "periocular_izq", subfolder_periocular,
-                f"{minute_key}_{idx}_periocular_izq.png"
+                self.dir_session_real, "periocular_izq", subfolder_periocular,
+                f"{self.session_timestamp}_{idx}_periocular_izq.png"
             )
             self.writer.add_task(path_izq, patches["periocular_izq"])
+            self._record_distribution_count("periocular_izq", subfolder_periocular)
 
             # 2. Periocular Derecho
             path_der = os.path.join(
-                DIR_RDATASET, "periocular_der", subfolder_periocular,
-                f"{minute_key}_{idx}_periocular_der.png"
+                self.dir_session_real, "periocular_der", subfolder_periocular,
+                f"{self.session_timestamp}_{idx}_periocular_der.png"
             )
             self.writer.add_task(path_der, patches["periocular_der"])
+            self._record_distribution_count("periocular_der", subfolder_periocular)
 
             # 3. Boca
             path_boca = os.path.join(
-                DIR_RDATASET, "boca", subfolder_boca,
-                f"{minute_key}_{idx}_boca.png"
+                self.dir_session_real, "boca", subfolder_boca,
+                f"{self.session_timestamp}_{idx}_boca.png"
             )
             self.writer.add_task(path_boca, patches["boca"])
+            self._record_distribution_count("boca", subfolder_boca)
 
-        # CASO 2: Grabación cruda a transmisiones (sin tags completos)
+        # ----------------------------------------------------------------------
+        # FLUJO 2: Crudos -> Data/raw/archive/{sesion}/
+        # ----------------------------------------------------------------------
         else:
-            timestamp = now.strftime("%d_%m_%Y_%H_%M")
             if is_burst:
-                self.burst_capture_count += 1
-                filename = f"{timestamp}_{self.burst_capture_count}.jpg"
-                filepath = os.path.join(DIR_RAFAGAS, filename)
+                self.raw_burst_count += 1
+                filename = f"{self.session_timestamp}_raf_{self.raw_burst_count}.jpg"
             else:
-                self.single_capture_count += 1
-                filename = f"{timestamp}_{self.single_capture_count}.jpg"
-                filepath = os.path.join(DIR_CAPTURAS, filename)
+                self.raw_single_count += 1
+                filename = f"{self.session_timestamp}_cap_{self.raw_single_count}.jpg"
 
+            filepath = os.path.join(self.dir_session_raw, filename)
             self.writer.add_task(filepath, raw_frame)
+
+    def _write_session_metadata(self):
+        """Genera el manifiesto metadata.json si se capturaron muestras supervisadas."""
+        if self.real_triad_count == 0:
+            return
+
+        metadata = {
+            "origen": "realtime",
+            "modelo_referencia": f"v{VERSION}",
+            "patcher_utilizado": f"patch{PATCHER}",
+            "timestamp": self.session_timestamp,
+            "resumen_global": {
+                "total_muestras_triadas": self.real_triad_count,
+                "total_parches_guardados": self.real_triad_count * 3
+            },
+            "distribucion_parches": self.real_distribution
+        }
+
+        os.makedirs(self.dir_session_real, exist_ok=True)
+        metadata_path = os.path.join(self.dir_session_real, "metadata.json")
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4, ensure_ascii=False)
+        print(f"\n[INFO] Manifiesto de sesión guardado en: {metadata_path}")
 
     def _draw_hud_box(self, img, pt1, pt2, alpha=0.55):
         x1, y1 = max(0, pt1[0]), max(0, pt1[1])
@@ -255,19 +299,19 @@ class RealtimeInferenceEngine:
 
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-        window_name = f"Inferencia en Vivo - v{VERSION}"
+        window_name = f"Ozmerion Realtime - v{VERSION} (Patcher {PATCHER})"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
         print("\n==================================================")
-        print(f"SISTEMA EN VIVO ACTIVO - VERSIÓN: v{VERSION}")
-        print("  - Tecla 'C': Captura única (asíncrona)")
-        print("  - Barra ESPACIO: Ráfaga continua (5 fps)")
+        print(f"SISTEMA EN VIVO ACTIVO - VERSIÓN: v{VERSION} (Patcher: {PATCHER})")
+        print("  - Tecla 'C'      : Captura única (asíncrona)")
+        print("  - Barra ESPACIO  : Ráfaga continua (5 fps)")
         print("  - Tags Ojos      : [1] Abierto  | [2] Cerrado")
         print("  - Tags Cejas     : [3] Neutra   | [4] Arriba   | [5] Abajo")
         print("  - Tags Boca      : [6] Abierta  | [7] Cerrada")
         print("  - Tags Comisuras : [8] Neutra   | [9] Arriba   | [0] Abajo")
         print("  - Tecla BACKSPACE: Limpiar tags")
-        print("  - Tecla 'Q' o ESC: Salir")
+        print("  - Tecla 'Q' o ESC: Salir y consolidar metadata")
         print("==================================================\n")
 
         fps = 0.0
@@ -301,11 +345,15 @@ class RealtimeInferenceEngine:
 
                 avg_conf = (conf_c_izq + conf_o_izq + conf_c_der + conf_o_der + conf_com + conf_ap) / 6.0
 
+            def fmt_c(c):
+                v = int(round(c * 100))
+                return "100%" if v >= 100 else f"{v}%"
+
             # ------------------------------------------------------------------
-            # HUD: 4 ESQUINAS CON FONDOS SEMITRANSPARENTES
+            # HUD: ESQUINAS
             # ------------------------------------------------------------------
 
-            # 1. Superior Izquierda: Estado limpio + Cadena de tags
+            # 1. Superior Izquierda: Estatus + Tags
             if status == "OK":
                 display_status = "Reconociendo"
                 status_color = (0, 255, 0)
@@ -334,10 +382,10 @@ class RealtimeInferenceEngine:
             cv2.putText(frame, tag_str, (18, 56),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.45, tag_color, 1, cv2.LINE_AA)
 
-            # 2. Superior Derecha: FPS y Confianza
+            # 2. Superior Derecha: FPS + Confianza
             self._draw_hud_box(frame, (w_frame - 180, 10), (w_frame - 10, 65), alpha=0.6)
             fps_text = f"FPS: {fps:.1f}"
-            conf_text = f"Confianza: {avg_conf * 100:.1f}%" if preds_ready else "Confianza: --"
+            conf_text = f"Confianza: {fmt_c(avg_conf)}" if preds_ready else "Confianza: --"
 
             cv2.putText(frame, fps_text, (w_frame - 170, 32),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 255, 200), 1, cv2.LINE_AA)
@@ -349,12 +397,12 @@ class RealtimeInferenceEngine:
             y_base = h_frame - 128
             line_step = 21
             labels_info = [
-                f"Ojo Izq: {ojo_izq} ({conf_o_izq * 100:.0f}%)",
-                f"Ojo Der: {ojo_der} ({conf_o_der * 100:.0f}%)",
-                f"Ceja Izq: {ceja_izq} ({conf_c_izq * 100:.0f}%)",
-                f"Ceja Der: {ceja_der} ({conf_c_der * 100:.0f}%)",
-                f"Apertura Boca: {ap_boca} ({conf_ap * 100:.0f}%)",
-                f"Comisuras: {com_boca} ({conf_com * 100:.0f}%)"
+                f"Ojo Izq: {ojo_izq} ({fmt_c(conf_o_izq)})",
+                f"Ojo Der: {ojo_der} ({fmt_c(conf_o_der)})",
+                f"Ceja Izq: {ceja_izq} ({fmt_c(conf_c_izq)})",
+                f"Ceja Der: {ceja_der} ({fmt_c(conf_c_der)})",
+                f"Apertura Boca: {ap_boca} ({fmt_c(conf_ap)})",
+                f"Comisuras: {com_boca} ({fmt_c(conf_com)})"
             ]
 
             for i, text in enumerate(labels_info):
@@ -379,11 +427,10 @@ class RealtimeInferenceEngine:
 
             # Flash de confirmación al guardar
             if curr_time < single_flash_until:
-                dest_str = "RDATASET" if self._has_complete_tags() else "TRANSMISIONES"
-                cv2.putText(frame, f"[GUARDADO ASÍNCRONO -> {dest_str}]", (w_frame // 2 - 160, 35),
+                dest_str = "DATASET/REAL" if self._has_complete_tags() else "RAW/ARCHIVE"
+                cv2.putText(frame, f"[GUARDADO ASÍNCRONO -> {dest_str}]", (w_frame // 2 - 170, 35),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
 
-            # Redimensionamiento con letterboxing manteniendo el aspect ratio original
             try:
                 win_rect = cv2.getWindowImageRect(window_name)
                 win_w, win_h = win_rect[2], win_rect[3]
@@ -400,7 +447,6 @@ class RealtimeInferenceEngine:
             key_raw = cv2.waitKey(1)
             key = key_raw & 0xFF
 
-            # Salida
             if key == ord('q') or key == 27:
                 break
 
@@ -408,13 +454,13 @@ class RealtimeInferenceEngine:
             elif key == 8:
                 self.tags = {"ojo": None, "ceja": None, "boca": None, "comisuras": None}
 
-            # Ojos: 1 abierto, 2 cerrado
+            # Tags de Ojos
             elif key == ord('1'):
                 self.tags["ojo"] = "abierto"
             elif key == ord('2'):
                 self.tags["ojo"] = "cerrado"
 
-            # Cejas: 3 neutra, 4 arriba, 5 abajo
+            # Tags de Cejas
             elif key == ord('3'):
                 self.tags["ceja"] = "neutra"
             elif key == ord('4'):
@@ -422,13 +468,13 @@ class RealtimeInferenceEngine:
             elif key == ord('5'):
                 self.tags["ceja"] = "abajo"
 
-            # Boca: 6 abierta, 7 cerrada
+            # Tags de Boca
             elif key == ord('6'):
                 self.tags["boca"] = "abierta"
             elif key == ord('7'):
                 self.tags["boca"] = "cerrada"
 
-            # Comisuras: 8 neutra, 9 arriba, 0 abajo
+            # Tags de Comisuras
             elif key == ord('8'):
                 self.tags["comisuras"] = "neutra"
             elif key == ord('9'):
@@ -451,6 +497,7 @@ class RealtimeInferenceEngine:
         cap.release()
         cv2.destroyAllWindows()
         self.writer.stop()
+        self._write_session_metadata()
 
 
 if __name__ == "__main__":

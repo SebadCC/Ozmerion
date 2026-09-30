@@ -2,7 +2,9 @@
 import os
 import stat
 import time
+import json
 import shutil
+from datetime import datetime
 import cv2
 import numpy as np
 import mediapipe.python.solutions.face_mesh as mp_face_mesh
@@ -12,13 +14,13 @@ from patch import GeometricPatchExtractor
 # RUTAS DEL SISTEMA DE ARCHIVOS
 # ==============================================================================
 ROOT_DATA = "Data"
-DIR_MUESTRAS = os.path.join(ROOT_DATA, "muestras")
-DIR_DATASET = os.path.join(ROOT_DATA, "dataset")
+DIR_RAW_READY = os.path.join(ROOT_DATA, "raw", "ready")
+DIR_DATASET_READY = os.path.join(ROOT_DATA, "dataset", "ready", "builder")
 
-DIR_PERIOCULAR_IZQ = os.path.join(DIR_DATASET, "periocular_izq")
-DIR_PERIOCULAR_DER = os.path.join(DIR_DATASET, "periocular_der")
-DIR_BOCA = os.path.join(DIR_DATASET, "boca")
-DIR_INVALIDAS = os.path.join(DIR_DATASET, "invalidas")
+DIR_PERIOCULAR_IZQ = os.path.join(DIR_DATASET_READY, "periocular_izq")
+DIR_PERIOCULAR_DER = os.path.join(DIR_DATASET_READY, "periocular_der")
+DIR_BOCA = os.path.join(DIR_DATASET_READY, "boca")
+DIR_INVALIDAS = os.path.join(DIR_DATASET_READY, "invalidas")
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
@@ -110,7 +112,7 @@ class DatasetBuilder:
                 print(f"[AVISO] No se pudo eliminar temporalmente {item_path}: {e}")
 
     def _reset_dataset_workspace(self):
-        self._safe_clear_directory(DIR_DATASET)
+        self._safe_clear_directory(DIR_DATASET_READY)
         os.makedirs(DIR_PERIOCULAR_IZQ, exist_ok=True)
         os.makedirs(DIR_PERIOCULAR_DER, exist_ok=True)
         os.makedirs(DIR_BOCA, exist_ok=True)
@@ -119,12 +121,12 @@ class DatasetBuilder:
     def _classify_eyebrow(self, p_in, p_mid, p_out) -> str:
         brow_width = max(1e-4, float(np.linalg.norm(p_out - p_in)))
 
-        # 1. Descenso/Fruncido: caída del extremo interno (coordenada Y mayor hacia abajo en imagen)
+        # 1. Descenso/Fruncido: caída del extremo interno
         slope_in = (p_in[1] - p_out[1]) / brow_width
         if slope_in > BROW_SLOPE_LOW_THRESHOLD:
             return "descendida"
 
-        # 2. Elevación: altura de la cúspide central respecto a la cuerda base
+        # 2. Elevación: altura de la cúspide central
         y_base_interp = (p_in[1] + p_out[1]) / 2.0
         arch_height = (y_base_interp - p_mid[1]) / brow_width
         if arch_height > BROW_ARCH_HIGH_THRESHOLD:
@@ -177,30 +179,70 @@ class DatasetBuilder:
 
         return (label_periocular_izq, label_periocular_der), label_boca
 
+    def _generate_class_distribution(self):
+        distribution = {
+            "periocular_izq": {},
+            "periocular_der": {},
+            "boca": {}
+        }
+
+        for region, target_dir in [("periocular_izq", DIR_PERIOCULAR_IZQ),
+                                   ("periocular_der", DIR_PERIOCULAR_DER),
+                                   ("boca", DIR_BOCA)]:
+            if os.path.exists(target_dir):
+                for folder in sorted(os.listdir(target_dir)):
+                    folder_path = os.path.join(target_dir, folder)
+                    if os.path.isdir(folder_path):
+                        count = len([f for f in os.listdir(folder_path) if f.lower().endswith(".png")])
+                        distribution[region][folder] = count
+
+        return distribution
+
+    def _write_metadata(self, lotes_procesados, total_analizadas, total_validas, total_descartes):
+        timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+        metadata = {
+            "origen": "builder",
+            "extractor": "patch (MediaPipe FaceMesh Clásico)",
+            "timestamp": timestamp,
+            "lotes_procesados": lotes_procesados,
+            "resumen_global": {
+                "total_imagenes_analizadas": total_analizadas,
+                "muestras_validas_triadas": total_validas,
+                "total_parches_guardados": total_validas * 3,
+                "imagenes_descartadas": total_descartes
+            },
+            "distribucion_parches": self._generate_class_distribution()
+        }
+
+        metadata_path = os.path.join(DIR_DATASET_READY, "metadata.json")
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=4, ensure_ascii=False)
+        print(f"[INFO] Manifiesto de auditoría guardado en: {metadata_path}")
+
     def process(self):
-        if not os.path.exists(DIR_MUESTRAS):
-            print(f"[ERROR] No se encontró el directorio de muestras en: '{DIR_MUESTRAS}'")
+        if not os.path.exists(DIR_RAW_READY):
+            print(f"[ERROR] No se encontró el directorio de entrada en: '{DIR_RAW_READY}'")
             return
 
         self._reset_dataset_workspace()
 
         voluntarios = sorted([
-            v for v in os.listdir(DIR_MUESTRAS)
-            if os.path.isdir(os.path.join(DIR_MUESTRAS, v))
+            v for v in os.listdir(DIR_RAW_READY)
+            if os.path.isdir(os.path.join(DIR_RAW_READY, v))
         ])
 
         if not voluntarios:
-            print(f"[AVISO] No se encontraron carpetas de voluntarios en: '{DIR_MUESTRAS}'")
+            print(f"[AVISO] No se encontraron carpetas de lotes en: '{DIR_RAW_READY}'")
             return
 
         total_imagenes = 0
         total_validas = 0
         total_descartes = 0
 
-        print(f"\n[INFO] Iniciando procesamiento de {len(voluntarios)} carpetas de voluntarios...")
+        print(f"\n[INFO] Iniciando procesamiento de {len(voluntarios)} carpetas con FaceMesh clásico...")
 
         for vol in voluntarios:
-            vol_dir = os.path.join(DIR_MUESTRAS, vol)
+            vol_dir = os.path.join(DIR_RAW_READY, vol)
             archivos = sorted([
                 f for f in os.listdir(vol_dir)
                 if os.path.splitext(f)[1].lower() in IMAGE_EXTENSIONS
@@ -254,34 +296,30 @@ class DatasetBuilder:
 
                 label_p_izq, label_p_der = labels_periocular
 
-                # 3. Guardado con nomenclatura canónica {vol}_{idx}_{parche}.png
-                # Periocular Izquierdo
+                # 3. Guardado con nomenclatura canónica
                 out_dir_izq = os.path.join(DIR_PERIOCULAR_IZQ, label_p_izq)
                 os.makedirs(out_dir_izq, exist_ok=True)
-                path_p_izq = os.path.join(out_dir_izq, f"{vol}_{idx}_periocular_izq.png")
-                cv2.imwrite(path_p_izq, patches["periocular_izq"])
+                cv2.imwrite(os.path.join(out_dir_izq, f"{vol}_{idx}_periocular_izq.png"), patches["periocular_izq"])
 
-                # Periocular Derecho
                 out_dir_der = os.path.join(DIR_PERIOCULAR_DER, label_p_der)
                 os.makedirs(out_dir_der, exist_ok=True)
-                path_p_der = os.path.join(out_dir_der, f"{vol}_{idx}_periocular_der.png")
-                cv2.imwrite(path_p_der, patches["periocular_der"])
+                cv2.imwrite(os.path.join(out_dir_der, f"{vol}_{idx}_periocular_der.png"), patches["periocular_der"])
 
-                # Boca
                 out_dir_boca = os.path.join(DIR_BOCA, label_boca)
                 os.makedirs(out_dir_boca, exist_ok=True)
-                path_boca = os.path.join(out_dir_boca, f"{vol}_{idx}_boca.png")
-                cv2.imwrite(path_boca, patches["boca"])
+                cv2.imwrite(os.path.join(out_dir_boca, f"{vol}_{idx}_boca.png"), patches["boca"])
 
                 total_validas += 1
 
+        self._write_metadata(voluntarios, total_imagenes, total_validas, total_descartes)
+
         print("\n==================================================")
-        print("RESUMEN DE PROCESAMIENTO (BUILDER)")
+        print("RESUMEN DE PROCESAMIENTO (BUILDER - CLASSIC)")
         print(f"  - Total imágenes analizadas : {total_imagenes}")
         print(f"  - Muestras válidas (tríadas): {total_validas}")
         print(f"  - Total parches guardados   : {total_validas * 3}")
-        print(f"  - Imágenes descartadas      : {total_descartes} (en Data/dataset/invalidas/)")
-        print(f"  - Directorio de salida      : {DIR_DATASET}")
+        print(f"  - Imágenes descartadas      : {total_descartes} (en {DIR_INVALIDAS})")
+        print(f"  - Directorio de salida      : {DIR_DATASET_READY}")
         print("==================================================\n")
 
 
