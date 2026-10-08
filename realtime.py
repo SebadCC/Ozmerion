@@ -11,7 +11,7 @@ import numpy as np
 # ==============================================================================
 # CONFIGURACIÓN DE VERSIÓN Y CONTROL DE EXTRACTOR
 # ==============================================================================
-VERSION = 11          # Versión del modelo ONNX a cargar (Data/models/vX/onnx/)
+VERSION = 12          # Versión del modelo ONNX a cargar (Data/models/vX/onnx/)
 PATCHER = 2           # 1: patch.py (MediaPipe Clásico) | 2: patch2.py (MediaPipe Tasks)
 
 ROOT_DATA = "Data"

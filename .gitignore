@@ -1,4 +1,14 @@
-Data/
+#Data/
+dataset/
+Datasets invalidos/
+prueba/
+raw/
+
+synthetic_3d/
+scripts/
 __pycache__/
 .vscode/
 .gemini/
+DEVELOPMENT.md
+RULES.md
+VISION.md

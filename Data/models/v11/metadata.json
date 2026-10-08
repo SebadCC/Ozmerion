@@ -1,0 +1,317 @@
+{
+    "version": "v11",
+    "timestamp": "28_09_26_11_52",
+    "configuracion": {
+        "batch_size": 8,
+        "epocas_por_etapa": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.01,
+        "val_split_porcentaje": 15,
+        "auto_balance_activado": true,
+        "etapas_adaptativas": 3
+    },
+    "fuentes_utilizadas": [
+        "builder2"
+    ],
+    "metadatos_origenes": {
+        "builder2": {
+            "origen": "builder2",
+            "motor_parches": "patch2",
+            "timestamp": "28_09_26_11_09",
+            "configuracion": {
+                "max_pitch_deg": 20.0,
+                "max_yaw_deg": 20.0,
+                "max_roll_deg": 15.0,
+                "padding_periocular": 0.45,
+                "padding_boca": 0.45,
+                "mar_open_threshold": 0.12,
+                "ear_open_threshold": 0.19,
+                "brow_corrugator_euclidean_th": 0.25,
+                "brow_dist_in_y_th": 0.39,
+                "brow_dist_in_x_th": 0.18,
+                "brow_arch_high_threshold": 0.32,
+                "uncertainty_margin": 0.08
+            },
+            "lotes_procesados": [
+                "ADFES_F01",
+                "ADFES_F02",
+                "ADFES_F03",
+                "ADFES_F04",
+                "ADFES_F05",
+                "ADFES_F06",
+                "ADFES_F07",
+                "ADFES_F08",
+                "ADFES_F09",
+                "ADFES_F10",
+                "ADFES_M01",
+                "ADFES_M02",
+                "ADFES_M03",
+                "ADFES_M04",
+                "ADFES_M05",
+                "ADFES_M06",
+                "ADFES_M07",
+                "ADFES_M08",
+                "ADFES_M09",
+                "ADFES_M10",
+                "ADFES_M11",
+                "ADFES_M12"
+            ],
+            "resumen_global": {
+                "total_imagenes_analizadas": 14920,
+                "total_parches_guardados": 44586,
+                "total_parches_incertidumbre": 13636,
+                "desglose_incertidumbre": {
+                    "periocular_izq": 6284,
+                    "periocular_der": 6050,
+                    "boca": 1302
+                },
+                "imagenes_descartadas_pose": 58
+            },
+            "distribucion_parches": {
+                "periocular_izq": {
+                    "ceja_elevada_ojo_abierto": 1246,
+                    "ceja_elevada_ojo_cerrado": 45,
+                    "ceja_neutra_ojo_abierto": 6829,
+                    "ceja_neutra_ojo_cerrado": 458
+                },
+                "periocular_der": {
+                    "ceja_elevada_ojo_abierto": 864,
+                    "ceja_elevada_ojo_cerrado": 36,
+                    "ceja_neutra_ojo_abierto": 7429,
+                    "ceja_neutra_ojo_cerrado": 483
+                },
+                "boca": {
+                    "comisuras_abajo_abierta": 94,
+                    "comisuras_abajo_cerrada": 1456,
+                    "comisuras_arriba_abierta": 909,
+                    "comisuras_arriba_cerrada": 2066,
+                    "comisuras_neutra_abierta": 1552,
+                    "comisuras_neutra_cerrada": 7483
+                },
+                "incertidumbre": {
+                    "periocular_izq": 6284,
+                    "periocular_der": 6050,
+                    "boca": 1302
+                }
+            }
+        }
+    },
+    "auditoria_muestras": {
+        "periocular": {
+            "total_balanceado": 324,
+            "distribucion_clases": {
+                "2": 81,
+                "3": 81,
+                "4": 81,
+                "5": 81
+            },
+            "train": 276,
+            "val": 48
+        },
+        "boca": {
+            "total_balanceado": 564,
+            "distribucion_clases": {
+                "0": 94,
+                "1": 94,
+                "2": 94,
+                "3": 94,
+                "4": 94,
+                "5": 94
+            },
+            "train": 480,
+            "val": 84
+        }
+    },
+    "rendimiento_modelos": {
+        "periocular": {
+            "accuracy_compuesto_final": 0.9375,
+            "latencia_cpu_ms": 17.54,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 160,
+                    "accuracy_compuesto": 0.9375,
+                    "f1_estados": {
+                        "clase_0": 0.0,
+                        "clase_1": 0.0,
+                        "clase_2": 0.9231,
+                        "clase_3": 0.9091,
+                        "clase_4": 0.9565,
+                        "clase_5": 0.96
+                    }
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 79,
+                    "accuracy_compuesto": 0.9583,
+                    "f1_estados": {
+                        "clase_0": 0.0,
+                        "clase_1": 0.0,
+                        "clase_2": 1.0,
+                        "clase_3": 0.9565,
+                        "clase_4": 0.96,
+                        "clase_5": 0.9167
+                    }
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 39,
+                    "accuracy_compuesto": 0.9375,
+                    "f1_estados": {
+                        "clase_0": 0.0,
+                        "clase_1": 0.0,
+                        "clase_2": 0.96,
+                        "clase_3": 0.9091,
+                        "clase_4": 0.9565,
+                        "clase_5": 0.9231
+                    }
+                }
+            ],
+            "matriz_confusion_final": [
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    12,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    1,
+                    10,
+                    0,
+                    1
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    11,
+                    1
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    12
+                ]
+            ]
+        },
+        "boca": {
+            "accuracy_compuesto_final": 0.9405,
+            "latencia_cpu_ms": 4.82,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 276,
+                    "accuracy_compuesto": 0.8929,
+                    "f1_estados": {
+                        "clase_0": 0.8889,
+                        "clase_1": 0.9231,
+                        "clase_2": 0.8125,
+                        "clase_3": 0.9286,
+                        "clase_4": 0.8889,
+                        "clase_5": 0.9286
+                    }
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 138,
+                    "accuracy_compuesto": 0.9167,
+                    "f1_estados": {
+                        "clase_0": 0.9655,
+                        "clase_1": 0.9231,
+                        "clase_2": 0.8667,
+                        "clase_3": 0.9333,
+                        "clase_4": 0.88,
+                        "clase_5": 0.9286
+                    }
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 69,
+                    "accuracy_compuesto": 0.9405,
+                    "f1_estados": {
+                        "clase_0": 0.9231,
+                        "clase_1": 0.963,
+                        "clase_2": 0.875,
+                        "clase_3": 0.963,
+                        "clase_4": 0.963,
+                        "clase_5": 0.9655
+                    }
+                }
+            ],
+            "matriz_confusion_final": [
+                [
+                    12,
+                    0,
+                    2,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    13,
+                    1,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    14,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    13,
+                    0,
+                    1
+                ],
+                [
+                    0,
+                    0,
+                    1,
+                    0,
+                    13,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    14
+                ]
+            ]
+        }
+    }
+}
