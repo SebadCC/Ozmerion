@@ -1,0 +1,91 @@
+{
+    "version": "v14",
+    "timestamp": "14_10_26_21_00",
+    "configuracion": {
+        "batch_size": 64,
+        "epocas_por_etapa": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.0001,
+        "val_split_porcentaje": 15,
+        "auto_balance_activado": true,
+        "etapas_adaptativas": 3
+    },
+    "fuentes_utilizadas": [
+        "adfes_v12_17x"
+    ],
+    "metadatos_origenes": {
+        "adfes_v12_17x": "Dataset ADFES expandido 17x con 16 arquetipos de iluminación sintética con protección pupilar"
+    },
+    "auditoria_muestras": {
+        "periocular": {
+            "total_balanceado": 469404,
+            "distribucion_clases": {
+                "0": 78234,
+                "1": 78234,
+                "2": 78234,
+                "3": 78234,
+                "4": 78234,
+                "5": 78234
+            },
+            "train": 398994,
+            "val": 70410
+        },
+        "boca": {
+            "total_balanceado": 240414,
+            "distribucion_clases": {
+                "0": 40069,
+                "1": 40069,
+                "2": 40069,
+                "3": 40069,
+                "4": 40069,
+                "5": 40069
+            },
+            "train": 204354,
+            "val": 36060
+        }
+    },
+    "rendimiento_modelos": {
+        "periocular": {
+            "accuracy_compuesto_final": 0.9519,
+            "latencia_cpu_ms": 10.79,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 228000,
+                    "accuracy_compuesto": 0.9438
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 113998,
+                    "accuracy_compuesto": 0.9592
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 56999,
+                    "accuracy_compuesto": 0.9519
+                }
+            ]
+        },
+        "boca": {
+            "accuracy_compuesto_final": 0.9834,
+            "latencia_cpu_ms": 1.28,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 116774,
+                    "accuracy_compuesto": 0.9813
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 58387,
+                    "accuracy_compuesto": 0.9820
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 29193,
+                    "accuracy_compuesto": 0.9834
+                }
+            ]
+        }
+    }
+}

@@ -1,5 +1,36 @@
 # realtime.py
 import os
+import sys
+import glob
+
+# Compatibilidad con Linux / Wayland / Xwayland para OpenCV GUI (Qt/XCB)
+if "DISPLAY" not in os.environ or not os.environ["DISPLAY"]:
+    os.environ["DISPLAY"] = ":0"
+os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+
+if "XAUTHORITY" not in os.environ or not os.path.exists(os.environ.get("XAUTHORITY", "")):
+    try:
+        uid = os.getuid()
+        auth_candidates = (
+            glob.glob(f"/run/user/{uid}/.mutter-Xwaylandauth*") +
+            glob.glob(os.path.expanduser("~/.Xauthority")) +
+            glob.glob(f"/run/user/{uid}/*Xwayland*") +
+            glob.glob(f"/run/user/{uid}/*auth*")
+        )
+        for cand in auth_candidates:
+            if os.path.isfile(cand) and os.access(cand, os.R_OK):
+                os.environ["XAUTHORITY"] = cand
+                # Sincronizar token hacia ~/.Xauthority para que sandboxes como Flatpak lo lean
+                dot_xauth = os.path.expanduser("~/.Xauthority")
+                if cand != dot_xauth:
+                    try:
+                        import shutil
+                        shutil.copyfile(cand, dot_xauth)
+                    except Exception:
+                        pass
+                break
+    except Exception:
+        pass
 import time
 import json
 import queue
@@ -11,7 +42,7 @@ import numpy as np
 # ==============================================================================
 # CONFIGURACIÓN DE VERSIÓN Y CONTROL DE EXTRACTOR
 # ==============================================================================
-VERSION = 12          # Versión del modelo ONNX a cargar (Data/models/vX/onnx/)
+VERSION = 14          # Versión del modelo ONNX a cargar (Data/models/vX/onnx/)
 PATCHER = 2           # 1: patch.py (MediaPipe Clásico) | 2: patch2.py (MediaPipe Tasks)
 
 ROOT_DATA = "Data"
@@ -139,7 +170,14 @@ class RealtimeInferenceEngine:
         }
 
     def _infer_periocular(self, patch):
-        blob = (patch.astype(np.float32) / 255.0)[np.newaxis, np.newaxis, :, :]
+        p_min = float(np.min(patch))
+        p_max = float(np.max(patch))
+        if p_max > p_min + 10:
+            norm_patch = np.clip((patch.astype(np.float32) - p_min) * 255.0 / (p_max - p_min), 0, 255).astype(np.uint8)
+        else:
+            norm_patch = patch
+
+        blob = (norm_patch.astype(np.float32) / 255.0)[np.newaxis, np.newaxis, :, :]
         self.net_periocular.setInput(blob)
         outputs = self.net_periocular.forward(self.out_names_p)
 
@@ -160,7 +198,14 @@ class RealtimeInferenceEngine:
         )
 
     def _infer_mouth(self, patch):
-        blob = (patch.astype(np.float32) / 255.0)[np.newaxis, np.newaxis, :, :]
+        p_min = float(np.min(patch))
+        p_max = float(np.max(patch))
+        if p_max > p_min + 10:
+            norm_patch = np.clip((patch.astype(np.float32) - p_min) * 255.0 / (p_max - p_min), 0, 255).astype(np.uint8)
+        else:
+            norm_patch = patch
+
+        blob = (norm_patch.astype(np.float32) / 255.0)[np.newaxis, np.newaxis, :, :]
         self.net_mouth.setInput(blob)
         outputs = self.net_mouth.forward(self.out_names_m)
 

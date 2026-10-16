@@ -1,14 +1,29 @@
-#Data/
-dataset/
-Datasets invalidos/
-prueba/
-raw/
+# Python & Entornos
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
 
+# Datasets pesados e imágenes intermedias (almacenamiento local en disco)
+Data/dataset/
+Data/ready/
+Data/raw/
+Data/archive/
+Data/models/**/dataset/
+Data/precalculated_*.npz
+*.pt
+dataset/
+raw/
+prueba/
 synthetic_3d/
 scripts/
-__pycache__/
+"Datasets invalidos/"
+
+# IDE y herramientas
 .vscode/
 .gemini/
+
+# Bloquear duplicados en raíz (la documentación canónica vive en IA Gen/)
 DEVELOPMENT.md
 RULES.md
 VISION.md

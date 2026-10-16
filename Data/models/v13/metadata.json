@@ -1,0 +1,509 @@
+{
+    "version": "v13",
+    "timestamp": "10_10_26_00_42",
+    "configuracion": {
+        "batch_size": 32,
+        "epocas_por_etapa": 8,
+        "learning_rate": 0.001,
+        "weight_decay": 0.01,
+        "val_split_porcentaje": 15,
+        "auto_balance_activado": true,
+        "etapas_adaptativas": 3
+    },
+    "fuentes_utilizadas": [
+        "adfes_original_bal",
+        "adfes_zenithal_bal"
+    ],
+    "metadatos_origenes": {
+        "adfes_original_bal": {
+            "origen": "balancer",
+            "dataset_base": "adfes_original",
+            "timestamp": "09_10_26_22_44",
+            "parametros_sintesis": {
+                "max_rotation_deg": 3.0,
+                "max_translation_px": 2,
+                "alpha_contrast_range": [
+                    0.9,
+                    1.1
+                ],
+                "beta_brightness_range": [
+                    -10,
+                    10
+                ],
+                "prob_gaussian_blur": 0.2
+            },
+            "total_muestras_balanceadas": 80470,
+            "desglose_clases": {
+                "periocular_izq": {
+                    "ceja_descendida_ojo_abierto": {
+                        "originales": 4556,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 4556
+                    },
+                    "ceja_descendida_ojo_cerrado": {
+                        "originales": 2273,
+                        "invertidas": 1117,
+                        "sintetizadas": 0,
+                        "total": 3390
+                    },
+                    "ceja_elevada_ojo_abierto": {
+                        "originales": 5181,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 5181
+                    },
+                    "ceja_elevada_ojo_cerrado": {
+                        "originales": 2440,
+                        "invertidas": 1033,
+                        "sintetizadas": 0,
+                        "total": 3473
+                    },
+                    "ceja_neutra_ojo_abierto": {
+                        "originales": 6015,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 6015
+                    },
+                    "ceja_neutra_ojo_cerrado": {
+                        "originales": 2544,
+                        "invertidas": 981,
+                        "sintetizadas": 0,
+                        "total": 3525
+                    }
+                },
+                "periocular_der": {
+                    "ceja_descendida_ojo_abierto": {
+                        "originales": 4381,
+                        "invertidas": 75,
+                        "sintetizadas": 0,
+                        "total": 4456
+                    },
+                    "ceja_descendida_ojo_cerrado": {
+                        "originales": 2329,
+                        "invertidas": 1101,
+                        "sintetizadas": 0,
+                        "total": 3430
+                    },
+                    "ceja_elevada_ojo_abierto": {
+                        "originales": 4889,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 4889
+                    },
+                    "ceja_elevada_ojo_cerrado": {
+                        "originales": 2384,
+                        "invertidas": 1073,
+                        "sintetizadas": 0,
+                        "total": 3457
+                    },
+                    "ceja_neutra_ojo_abierto": {
+                        "originales": 6468,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 6468
+                    },
+                    "ceja_neutra_ojo_cerrado": {
+                        "originales": 2569,
+                        "invertidas": 981,
+                        "sintetizadas": 0,
+                        "total": 3550
+                    }
+                },
+                "boca": {
+                    "comisuras_abajo_abierta": {
+                        "originales": 2357,
+                        "invertidas": 0,
+                        "sintetizadas": 1514,
+                        "total": 3871
+                    },
+                    "comisuras_abajo_cerrada": {
+                        "originales": 2585,
+                        "invertidas": 0,
+                        "sintetizadas": 1366,
+                        "total": 3951
+                    },
+                    "comisuras_arriba_abierta": {
+                        "originales": 3001,
+                        "invertidas": 0,
+                        "sintetizadas": 1094,
+                        "total": 4095
+                    },
+                    "comisuras_arriba_cerrada": {
+                        "originales": 4281,
+                        "invertidas": 0,
+                        "sintetizadas": 260,
+                        "total": 4541
+                    },
+                    "comisuras_neutra_abierta": {
+                        "originales": 3756,
+                        "invertidas": 0,
+                        "sintetizadas": 602,
+                        "total": 4358
+                    },
+                    "comisuras_neutra_cerrada": {
+                        "originales": 7264,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 7264
+                    }
+                }
+            }
+        },
+        "adfes_zenithal_bal": {
+            "origen": "balancer",
+            "dataset_base": "adfes_zenithal",
+            "timestamp": "09_10_26_22_44",
+            "parametros_sintesis": {
+                "max_rotation_deg": 3.0,
+                "max_translation_px": 2,
+                "alpha_contrast_range": [
+                    0.9,
+                    1.1
+                ],
+                "beta_brightness_range": [
+                    -10,
+                    10
+                ],
+                "prob_gaussian_blur": 0.2
+            },
+            "total_muestras_balanceadas": 46910,
+            "desglose_clases": {
+                "periocular_izq": {
+                    "ceja_descendida_ojo_abierto": {
+                        "originales": 2450,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 2450
+                    },
+                    "ceja_descendida_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 1116,
+                        "sintetizadas": 0,
+                        "total": 3616
+                    },
+                    "ceja_elevada_ojo_abierto": {
+                        "originales": 1825,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 1825
+                    },
+                    "ceja_elevada_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 1033,
+                        "sintetizadas": 0,
+                        "total": 3533
+                    },
+                    "ceja_neutra_ojo_abierto": {
+                        "originales": 991,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 991
+                    },
+                    "ceja_neutra_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 981,
+                        "sintetizadas": 0,
+                        "total": 3481
+                    }
+                },
+                "periocular_der": {
+                    "ceja_descendida_ojo_abierto": {
+                        "originales": 2500,
+                        "invertidas": 74,
+                        "sintetizadas": 0,
+                        "total": 2574
+                    },
+                    "ceja_descendida_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 1100,
+                        "sintetizadas": 0,
+                        "total": 3600
+                    },
+                    "ceja_elevada_ojo_abierto": {
+                        "originales": 2141,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 2141
+                    },
+                    "ceja_elevada_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 1073,
+                        "sintetizadas": 0,
+                        "total": 3573
+                    },
+                    "ceja_neutra_ojo_abierto": {
+                        "originales": 562,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 562
+                    },
+                    "ceja_neutra_ojo_cerrado": {
+                        "originales": 2500,
+                        "invertidas": 980,
+                        "sintetizadas": 0,
+                        "total": 3480
+                    }
+                },
+                "boca": {
+                    "comisuras_abajo_abierta": {
+                        "originales": 2500,
+                        "invertidas": 0,
+                        "sintetizadas": 809,
+                        "total": 3309
+                    },
+                    "comisuras_abajo_cerrada": {
+                        "originales": 2500,
+                        "invertidas": 0,
+                        "sintetizadas": 729,
+                        "total": 3229
+                    },
+                    "comisuras_arriba_abierta": {
+                        "originales": 2500,
+                        "invertidas": 0,
+                        "sintetizadas": 585,
+                        "total": 3085
+                    },
+                    "comisuras_arriba_cerrada": {
+                        "originales": 2500,
+                        "invertidas": 0,
+                        "sintetizadas": 139,
+                        "total": 2639
+                    },
+                    "comisuras_neutra_abierta": {
+                        "originales": 2500,
+                        "invertidas": 0,
+                        "sintetizadas": 322,
+                        "total": 2822
+                    },
+                    "comisuras_neutra_cerrada": {
+                        "originales": 0,
+                        "invertidas": 0,
+                        "sintetizadas": 0,
+                        "total": 0
+                    }
+                }
+            }
+        }
+    },
+    "auditoria_muestras": {
+        "periocular": {
+            "total_balanceado": 82806,
+            "distribucion_clases": {
+                "0": 13801,
+                "1": 13801,
+                "2": 13801,
+                "3": 13801,
+                "4": 13801,
+                "5": 13801
+            },
+            "train": 70386,
+            "val": 12420
+        },
+        "boca": {
+            "total_balanceado": 43074,
+            "distribucion_clases": {
+                "0": 7179,
+                "1": 7179,
+                "2": 7179,
+                "3": 7179,
+                "4": 7179,
+                "5": 7179
+            },
+            "train": 36612,
+            "val": 6462
+        }
+    },
+    "rendimiento_modelos": {
+        "periocular": {
+            "accuracy_compuesto_final": 0.9126,
+            "latencia_cpu_ms": 6.5,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 40224,
+                    "accuracy_compuesto": 0.9249,
+                    "f1_estados": {
+                        "clase_0": 0.9851,
+                        "clase_1": 0.934,
+                        "clase_2": 0.923,
+                        "clase_3": 0.8465,
+                        "clase_4": 0.9392,
+                        "clase_5": 0.9181
+                    }
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 20110,
+                    "accuracy_compuesto": 0.913,
+                    "f1_estados": {
+                        "clase_0": 0.9619,
+                        "clase_1": 0.932,
+                        "clase_2": 0.8927,
+                        "clase_3": 0.8724,
+                        "clase_4": 0.9063,
+                        "clase_5": 0.9195
+                    }
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 10056,
+                    "accuracy_compuesto": 0.9126,
+                    "f1_estados": {
+                        "clase_0": 0.9736,
+                        "clase_1": 0.9147,
+                        "clase_2": 0.8985,
+                        "clase_3": 0.8466,
+                        "clase_4": 0.9208,
+                        "clase_5": 0.9225
+                    }
+                }
+            ],
+            "matriz_confusion_final": [
+                [
+                    1976,
+                    1,
+                    71,
+                    0,
+                    22,
+                    0
+                ],
+                [
+                    9,
+                    1774,
+                    0,
+                    283,
+                    0,
+                    4
+                ],
+                [
+                    4,
+                    0,
+                    1788,
+                    1,
+                    277,
+                    0
+                ],
+                [
+                    0,
+                    34,
+                    13,
+                    1780,
+                    1,
+                    242
+                ],
+                [
+                    0,
+                    0,
+                    36,
+                    0,
+                    2034,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    2,
+                    71,
+                    14,
+                    1983
+                ]
+            ]
+        },
+        "boca": {
+            "accuracy_compuesto_final": 0.9718,
+            "latencia_cpu_ms": 1.03,
+            "historial_etapas": [
+                {
+                    "stage": 1,
+                    "muestras_etapa": 20922,
+                    "accuracy_compuesto": 0.9742,
+                    "f1_estados": {
+                        "clase_0": 0.9944,
+                        "clase_1": 0.9968,
+                        "clase_2": 0.9322,
+                        "clase_3": 0.9762,
+                        "clase_4": 0.9532,
+                        "clase_5": 0.9912
+                    }
+                },
+                {
+                    "stage": 2,
+                    "muestras_etapa": 10461,
+                    "accuracy_compuesto": 0.9726,
+                    "f1_estados": {
+                        "clase_0": 0.967,
+                        "clase_1": 0.9899,
+                        "clase_2": 0.9403,
+                        "clase_3": 0.9761,
+                        "clase_4": 0.9732,
+                        "clase_5": 0.9898
+                    }
+                },
+                {
+                    "stage": 3,
+                    "muestras_etapa": 5230,
+                    "accuracy_compuesto": 0.9718,
+                    "f1_estados": {
+                        "clase_0": 0.9846,
+                        "clase_1": 0.9931,
+                        "clase_2": 0.9364,
+                        "clase_3": 0.9677,
+                        "clase_4": 0.9603,
+                        "clase_5": 0.9893
+                    }
+                }
+            ],
+            "matriz_confusion_final": [
+                [
+                    1058,
+                    6,
+                    10,
+                    1,
+                    2,
+                    0
+                ],
+                [
+                    1,
+                    1076,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    11,
+                    0,
+                    1023,
+                    15,
+                    28,
+                    0
+                ],
+                [
+                    1,
+                    8,
+                    34,
+                    1034,
+                    0,
+                    0
+                ],
+                [
+                    1,
+                    0,
+                    41,
+                    0,
+                    1027,
+                    8
+                ],
+                [
+                    0,
+                    0,
+                    0,
+                    10,
+                    5,
+                    1062
+                ]
+            ]
+        }
+    }
+}
